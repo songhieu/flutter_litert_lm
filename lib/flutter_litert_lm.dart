@@ -1,5 +1,3 @@
-library flutter_litert_lm;
-
 export 'src/backend.dart';
 export 'src/config.dart';
 export 'src/content.dart';

@@ -48,7 +48,9 @@ void main() {
   test('sendMessage returns response map', () async {
     final result = await platform.sendMessage(
       'conv-456',
-      [{'type': 'text', 'text': 'Hi'}],
+      [
+        {'type': 'text', 'text': 'Hi'}
+      ],
       null,
     );
     expect(result['text'], 'Hello!');

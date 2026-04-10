@@ -28,7 +28,8 @@ class LiteLmEngine {
   /// This loads the model into memory and prepares it for inference.
   /// May take several seconds depending on model size and backend.
   static Future<LiteLmEngine> create(LiteLmEngineConfig config) async {
-    final id = await FlutterLitertLmPlatform.instance.createEngine(config.toMap());
+    final id =
+        await FlutterLitertLmPlatform.instance.createEngine(config.toMap());
     return LiteLmEngine._(id);
   }
 

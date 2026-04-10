@@ -29,7 +29,7 @@ class MockFlutterLitertLmPlatform
   Future<Map<String, dynamic>> sendMessage(
     String conversationId,
     List<Map<String, dynamic>> contents,
-    String? extraContext,
+    Map<String, Object>? extraContext,
   ) async =>
       {
         'role': 'model',
@@ -41,7 +41,7 @@ class MockFlutterLitertLmPlatform
   Stream<Map<String, dynamic>> sendMessageStream(
     String conversationId,
     List<Map<String, dynamic>> contents,
-    String? extraContext,
+    Map<String, Object>? extraContext,
   ) {
     return Stream.fromIterable([
       {'role': 'model', 'text': 'Hello', 'toolCalls': []},
