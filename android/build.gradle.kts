@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 group = "com.songhieu.flutter_litert_lm"
 version = "1.0-SNAPSHOT"
 
@@ -26,6 +28,16 @@ plugins {
     id("kotlin-android")
 }
 
+// Use the new compilerOptions DSL instead of the legacy
+// `android { kotlinOptions { jvmTarget = "..." } }` block. The legacy form
+// was deprecated in Kotlin 2.0 and removed in 2.3, so this keeps the build
+// working when dependabot bumps kotlin-android across that boundary.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 android {
     namespace = "com.songhieu.flutter_litert_lm"
 
@@ -34,10 +46,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     sourceSets {
