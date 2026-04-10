@@ -13,6 +13,11 @@ name: Publish to pub.dev
 # secret. The very first publish of a package must still be done manually
 # (`dart pub publish` from a developer machine) to claim the name on
 # pub.dev; subsequent versions flow through this workflow.
+#
+# If the tag points at a version that's already on pub.dev (which happens
+# whenever the very first manual publish predates the matching tag), the
+# `validate` job will detect that and short-circuit the publish job so the
+# workflow still ends green instead of failing on `version already exists`.
 
 on:
   push:
@@ -23,6 +28,8 @@ jobs:
   validate:
     name: Validate before publish
     runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,9 +51,30 @@ jobs:
       - name: Dry-run publish (validate package)
         run: flutter pub publish --dry-run
 
+      - id: check
+        name: Check whether this version is already on pub.dev
+        run: |
+          set -euo pipefail
+          PKG_NAME=$(grep '^name:' pubspec.yaml | awk '{print $2}' | tr -d ' ')
+          PKG_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | tr -d ' ')
+          # `latest.version` is null when the package doesn't exist yet, so
+          # default to empty so the comparison still works on first publish.
+          PUB_VERSION=$(curl -fsSL "https://pub.dev/api/packages/${PKG_NAME}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("latest", {}).get("version", ""))' \
+            || true)
+          echo "Local version : ${PKG_VERSION}"
+          echo "pub.dev latest: ${PUB_VERSION}"
+          if [ "${PUB_VERSION}" = "${PKG_VERSION}" ]; then
+            echo "Version ${PKG_VERSION} is already on pub.dev — skipping publish."
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
     name: Publish ${{ github.ref_name }}
     needs: validate
+    if: needs.validate.outputs.should_publish == 'true'
     # Reusable workflow provided by the Dart team. It handles the OIDC
     # handshake with pub.dev and runs `dart pub publish --force`. No API
     # token needs to be stored anywhere — pub.dev verifies the GitHub
