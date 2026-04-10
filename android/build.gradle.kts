@@ -1,4 +1,4 @@
-group = "com.songhieu.flutter_lite_lm"
+group = "com.songhieu.flutter_litert_lm"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -27,7 +27,7 @@ plugins {
 }
 
 android {
-    namespace = "com.songhieu.flutter_lite_lm"
+    namespace = "com.songhieu.flutter_litert_lm"
 
     compileSdk = 36
 
@@ -51,6 +51,11 @@ android {
 
     defaultConfig {
         minSdk = 24
+        // Ship Proguard/R8 rules with the AAR so consumer apps automatically
+        // keep the LiteRT-LM JNI surface (see consumer-rules.pro for the
+        // explanation). Without this, release builds crash with
+        // NoSuchMethodError on getters like SamplerConfig.getTopK().
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     testOptions {
@@ -70,7 +75,7 @@ android {
 
 dependencies {
     // LiteRT-LM Android SDK
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")

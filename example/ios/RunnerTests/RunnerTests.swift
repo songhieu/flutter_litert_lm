@@ -3,7 +3,7 @@ import UIKit
 import XCTest
 
 
-@testable import flutter_lite_lm
+@testable import flutter_litert_lm
 
 // This demonstrates a simple unit test of the Swift portion of this plugin's implementation.
 //
@@ -12,7 +12,7 @@ import XCTest
 class RunnerTests: XCTestCase {
 
   func testGetPlatformVersion() {
-    let plugin = FlutterLiteLmPlugin()
+    let plugin = FlutterLitertLmPlugin()
 
     let call = FlutterMethodCall(methodName: "getPlatformVersion", arguments: [])
 

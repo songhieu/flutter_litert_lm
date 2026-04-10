@@ -3,11 +3,11 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
-import 'flutter_lite_lm_platform_interface.dart';
+import 'flutter_litert_lm_platform_interface.dart';
 
-class MethodChannelFlutterLiteLm extends FlutterLiteLmPlatform {
-  static const _methodChannel = MethodChannel('flutter_lite_lm');
-  static const _eventChannel = EventChannel('flutter_lite_lm/stream');
+class MethodChannelFlutterLitertLm extends FlutterLitertLmPlatform {
+  static const _methodChannel = MethodChannel('flutter_litert_lm');
+  static const _eventChannel = EventChannel('flutter_litert_lm/stream');
 
   @override
   Future<String> createEngine(Map<String, dynamic> config) async {
@@ -47,7 +47,7 @@ class MethodChannelFlutterLiteLm extends FlutterLiteLmPlatform {
   Future<Map<String, dynamic>> sendMessage(
     String conversationId,
     List<Map<String, dynamic>> contents,
-    String? extraContext,
+    Map<String, Object>? extraContext,
   ) async {
     final result = await _methodChannel.invokeMethod<Map>(
       'sendMessage',
@@ -64,7 +64,7 @@ class MethodChannelFlutterLiteLm extends FlutterLiteLmPlatform {
   Stream<Map<String, dynamic>> sendMessageStream(
     String conversationId,
     List<Map<String, dynamic>> contents,
-    String? extraContext,
+    Map<String, Object>? extraContext,
   ) {
     // First, tell native side to start streaming
     _methodChannel.invokeMethod('startMessageStream', {

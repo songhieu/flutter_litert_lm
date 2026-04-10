@@ -1,12 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_lite_lm/flutter_lite_lm_method_channel.dart';
+import 'package:flutter_litert_lm/flutter_litert_lm_method_channel.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  final platform = MethodChannelFlutterLiteLm();
-  const channel = MethodChannel('flutter_lite_lm');
+  final platform = MethodChannelFlutterLitertLm();
+  const channel = MethodChannel('flutter_litert_lm');
 
   setUp(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

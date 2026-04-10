@@ -7,19 +7,19 @@ import UIKit
 /// This plugin provides the platform channel interface and will bridge to
 /// the native SDK once it becomes available.
 /// For now, it returns appropriate errors indicating iOS support is pending.
-public class FlutterLiteLmPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
+public class FlutterLitertLmPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     private var eventSink: FlutterEventSink?
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let methodChannel = FlutterMethodChannel(
-            name: "flutter_lite_lm",
+            name: "flutter_litert_lm",
             binaryMessenger: registrar.messenger()
         )
         let eventChannel = FlutterEventChannel(
-            name: "flutter_lite_lm/stream",
+            name: "flutter_litert_lm/stream",
             binaryMessenger: registrar.messenger()
         )
-        let instance = FlutterLiteLmPlugin()
+        let instance = FlutterLitertLmPlugin()
         registrar.addMethodCallDelegate(instance, channel: methodChannel)
         eventChannel.setStreamHandler(instance)
     }

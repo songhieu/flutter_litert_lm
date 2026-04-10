@@ -1,1 +1,1 @@
-rootProject.name = 'flutter_lite_lm'
+rootProject.name = 'flutter_litert_lm'

@@ -1,4 +1,4 @@
-import '../flutter_lite_lm_platform_interface.dart';
+import '../flutter_litert_lm_platform_interface.dart';
 import 'content.dart';
 import 'message.dart';
 
@@ -21,11 +21,11 @@ class LiteLmConversation {
   /// Send a text message and get the complete response.
   Future<LiteLmMessage> sendMessage(
     String text, {
-    String? extraContext,
+    Map<String, Object>? extraContext,
   }) async {
     _ensureNotDisposed();
     final contents = [LiteLmContent.text(text).toMap()];
-    final result = await FlutterLiteLmPlatform.instance.sendMessage(
+    final result = await FlutterLitertLmPlatform.instance.sendMessage(
       _id,
       contents,
       extraContext,
@@ -36,10 +36,10 @@ class LiteLmConversation {
   /// Send multimodal contents (text + images + audio) and get the complete response.
   Future<LiteLmMessage> sendMultimodalMessage(
     List<LiteLmContent> contents, {
-    String? extraContext,
+    Map<String, Object>? extraContext,
   }) async {
     _ensureNotDisposed();
-    final result = await FlutterLiteLmPlatform.instance.sendMessage(
+    final result = await FlutterLitertLmPlatform.instance.sendMessage(
       _id,
       contents.map((c) => c.toMap()).toList(),
       extraContext,
@@ -50,11 +50,11 @@ class LiteLmConversation {
   /// Send a text message and stream back partial responses as tokens are generated.
   Stream<LiteLmMessage> sendMessageStream(
     String text, {
-    String? extraContext,
+    Map<String, Object>? extraContext,
   }) {
     _ensureNotDisposed();
     final contents = [LiteLmContent.text(text).toMap()];
-    return FlutterLiteLmPlatform.instance
+    return FlutterLitertLmPlatform.instance
         .sendMessageStream(_id, contents, extraContext)
         .map((map) => LiteLmMessage.fromMap(map));
   }
@@ -63,11 +63,11 @@ class LiteLmConversation {
   Future<LiteLmMessage> sendToolResponse(
     String toolName,
     String result, {
-    String? extraContext,
+    Map<String, Object>? extraContext,
   }) async {
     _ensureNotDisposed();
     final contents = [LiteLmContent.toolResponse(toolName, result).toMap()];
-    final response = await FlutterLiteLmPlatform.instance.sendMessage(
+    final response = await FlutterLitertLmPlatform.instance.sendMessage(
       _id,
       contents,
       extraContext,
@@ -79,7 +79,7 @@ class LiteLmConversation {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await FlutterLiteLmPlatform.instance.disposeConversation(_id);
+    await FlutterLitertLmPlatform.instance.disposeConversation(_id);
   }
 
   void _ensureNotDisposed() {

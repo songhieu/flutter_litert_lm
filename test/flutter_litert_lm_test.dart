@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_lite_lm/flutter_lite_lm.dart';
-import 'package:flutter_lite_lm/flutter_lite_lm_platform_interface.dart';
-import 'package:flutter_lite_lm/flutter_lite_lm_method_channel.dart';
+import 'package:flutter_litert_lm/flutter_litert_lm.dart';
+import 'package:flutter_litert_lm/flutter_litert_lm_platform_interface.dart';
+import 'package:flutter_litert_lm/flutter_litert_lm_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-class MockFlutterLiteLmPlatform
+class MockFlutterLitertLmPlatform
     with MockPlatformInterfaceMixin
-    implements FlutterLiteLmPlatform {
+    implements FlutterLitertLmPlatform {
   @override
   Future<String> createEngine(Map<String, dynamic> config) async => 'engine-1';
 
@@ -54,18 +54,18 @@ class MockFlutterLiteLmPlatform
 }
 
 void main() {
-  final initialPlatform = FlutterLiteLmPlatform.instance;
+  final initialPlatform = FlutterLitertLmPlatform.instance;
 
-  test('MethodChannelFlutterLiteLm is the default instance', () {
-    expect(initialPlatform, isInstanceOf<MethodChannelFlutterLiteLm>());
+  test('MethodChannelFlutterLitertLm is the default instance', () {
+    expect(initialPlatform, isInstanceOf<MethodChannelFlutterLitertLm>());
   });
 
   group('LiteLmEngine', () {
-    late MockFlutterLiteLmPlatform mockPlatform;
+    late MockFlutterLitertLmPlatform mockPlatform;
 
     setUp(() {
-      mockPlatform = MockFlutterLiteLmPlatform();
-      FlutterLiteLmPlatform.instance = mockPlatform;
+      mockPlatform = MockFlutterLitertLmPlatform();
+      FlutterLitertLmPlatform.instance = mockPlatform;
     });
 
     test('create returns engine', () async {
@@ -96,11 +96,11 @@ void main() {
   });
 
   group('LiteLmConversation', () {
-    late MockFlutterLiteLmPlatform mockPlatform;
+    late MockFlutterLitertLmPlatform mockPlatform;
 
     setUp(() {
-      mockPlatform = MockFlutterLiteLmPlatform();
-      FlutterLiteLmPlatform.instance = mockPlatform;
+      mockPlatform = MockFlutterLitertLmPlatform();
+      FlutterLitertLmPlatform.instance = mockPlatform;
     });
 
     test('sendMessage returns response', () async {

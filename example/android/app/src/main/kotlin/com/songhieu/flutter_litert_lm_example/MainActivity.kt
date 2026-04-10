@@ -1,4 +1,4 @@
-package com.songhieu.flutter_lite_lm_example
+package com.songhieu.flutter_litert_lm_example
 
 import io.flutter.embedding.android.FlutterActivity
 

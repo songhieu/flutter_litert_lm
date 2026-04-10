@@ -1,14 +1,15 @@
-package com.songhieu.flutter_lite_lm
+package com.songhieu.flutter_litert_lm
 
 import android.content.Context
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.SamplerConfig
-import com.google.ai.edge.litertlm.Contents
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -20,7 +21,7 @@ import kotlinx.coroutines.flow.collect
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-class FlutterLiteLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.StreamHandler {
+class FlutterLitertLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.StreamHandler {
     private lateinit var methodChannel: MethodChannel
     private lateinit var eventChannel: EventChannel
     private lateinit var context: Context
@@ -34,9 +35,9 @@ class FlutterLiteLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Strea
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
-        methodChannel = MethodChannel(binding.binaryMessenger, "flutter_lite_lm")
+        methodChannel = MethodChannel(binding.binaryMessenger, "flutter_litert_lm")
         methodChannel.setMethodCallHandler(this)
-        eventChannel = EventChannel(binding.binaryMessenger, "flutter_lite_lm/stream")
+        eventChannel = EventChannel(binding.binaryMessenger, "flutter_litert_lm/stream")
         eventChannel.setStreamHandler(this)
     }
 
@@ -160,13 +161,18 @@ class FlutterLiteLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Strea
             try {
                 val convId = call.argument<String>("conversationId")!!
                 val contentsList = call.argument<List<Map<String, Any>>>("contents")!!
-                val extraContext = call.argument<String>("extraContext")
+                @Suppress("UNCHECKED_CAST")
+                val extraContext = call.argument<Map<String, Any>>("extraContext")
 
                 val conversation = conversations[convId]
                     ?: throw IllegalStateException("Conversation not found: $convId")
 
                 val contents = parseContents(contentsList)
-                val response = conversation.sendMessage(contents, extraContext)
+                val response = if (extraContext != null) {
+                    conversation.sendMessage(contents, extraContext)
+                } else {
+                    conversation.sendMessage(contents)
+                }
 
                 val responseMap = messageToMap(response)
 
@@ -186,15 +192,20 @@ class FlutterLiteLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Strea
             try {
                 val convId = call.argument<String>("conversationId")!!
                 val contentsList = call.argument<List<Map<String, Any>>>("contents")!!
-                val extraContext = call.argument<String>("extraContext")
+                @Suppress("UNCHECKED_CAST")
+                val extraContext = call.argument<Map<String, Any>>("extraContext")
 
                 val conversation = conversations[convId]
                     ?: throw IllegalStateException("Conversation not found: $convId")
 
                 val contents = parseContents(contentsList)
-                val flow = conversation.sendMessageAsync(contents, extraContext)
+                val flow = if (extraContext != null) {
+                    conversation.sendMessageAsync(contents, extraContext)
+                } else {
+                    conversation.sendMessageAsync(contents)
+                }
 
-                flow.collect { message ->
+                flow.collect { message: Message ->
                     val map = messageToMap(message)
                     withContext(Dispatchers.Main) {
                         eventSink?.success(map)
@@ -264,36 +275,44 @@ class FlutterLiteLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Strea
             }
         }
 
-        return ConversationConfig(
-            systemInstruction = systemInstruction?.let { Contents.of(it) },
-            initialMessages = initialMessages,
-            samplerConfig = samplerConfig,
-        )
+        // ConversationConfig fields are non-null with defaults; build from default
+        // and override only what we have via copy().
+        var config = ConversationConfig()
+        systemInstruction?.let { config = config.copy(systemInstruction = Contents.of(it)) }
+        if (!initialMessages.isNullOrEmpty()) {
+            config = config.copy(initialMessages = initialMessages)
+        }
+        samplerConfig?.let { config = config.copy(samplerConfig = it) }
+        return config
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun parseContents(contentsList: List<Map<String, Any>>): Contents {
-        // For simplicity, combine all text parts
-        val parts = mutableListOf<Any>()
+        val parts = mutableListOf<Content>()
         for (content in contentsList) {
             when (content["type"]) {
-                "text" -> parts.add(content["text"] as String)
-                "imageFile" -> parts.add(com.google.ai.edge.litertlm.Content.ImageFile(content["path"] as String))
-                "imageBytes" -> parts.add(com.google.ai.edge.litertlm.Content.ImageBytes(content["bytes"] as ByteArray))
-                "audioFile" -> parts.add(com.google.ai.edge.litertlm.Content.AudioFile(content["path"] as String))
-                "audioBytes" -> parts.add(com.google.ai.edge.litertlm.Content.AudioBytes(content["bytes"] as ByteArray))
+                "text" -> parts.add(Content.Text(content["text"] as String))
+                "imageFile" -> parts.add(Content.ImageFile(content["path"] as String))
+                "imageBytes" -> parts.add(Content.ImageBytes(content["bytes"] as ByteArray))
+                "audioFile" -> parts.add(Content.AudioFile(content["path"] as String))
+                "audioBytes" -> parts.add(Content.AudioBytes(content["bytes"] as ByteArray))
                 "toolResponse" -> parts.add(
-                    com.google.ai.edge.litertlm.Content.ToolResponse(
+                    Content.ToolResponse(
                         content["name"] as String,
                         content["result"] as String,
                     )
                 )
             }
         }
-        return Contents.of(*parts.toTypedArray())
+        return Contents.of(parts)
     }
 
     private fun messageToMap(message: Message): Map<String, Any> {
+        // Message no longer has a `.text` property; extract by joining all
+        // Content.Text parts in the message's contents.
+        val text = message.contents.contents
+            .filterIsInstance<Content.Text>()
+            .joinToString("") { it.text }
         val toolCalls = message.toolCalls.map { tc ->
             mapOf(
                 "name" to tc.name,
@@ -302,7 +321,7 @@ class FlutterLiteLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Strea
         }
         return mapOf(
             "role" to "model",
-            "text" to message.text,
+            "text" to text,
             "toolCalls" to toolCalls,
         )
     }

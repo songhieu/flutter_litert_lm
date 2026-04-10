@@ -1,0 +1,57 @@
+name: Publish to pub.dev
+
+# Trigger on tags shaped like `v0.1.0`. Push the tag AFTER the corresponding
+# version bump and CHANGELOG entry have landed on the default branch:
+#
+#     git tag -a v0.1.0 -m "v0.1.0"
+#     git push origin v0.1.0
+#
+# pub.dev's automated publishing must be enabled on the package admin page
+# (https://pub.dev/packages/flutter_litert_lm/admin) for this workflow to
+# succeed. The OIDC token issued by GitHub is exchanged for a short-lived
+# pub.dev publishing credential — there is no API token to store as a
+# secret. The very first publish of a package must still be done manually
+# (`dart pub publish` from a developer machine) to claim the name on
+# pub.dev; subsequent versions flow through this workflow.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  validate:
+    name: Validate before publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Dry-run publish (validate package)
+        run: flutter pub publish --dry-run
+
+  publish:
+    name: Publish ${{ github.ref_name }}
+    needs: validate
+    # Reusable workflow provided by the Dart team. It handles the OIDC
+    # handshake with pub.dev and runs `dart pub publish --force`. No API
+    # token needs to be stored anywhere — pub.dev verifies the GitHub
+    # OIDC claim against the repo + tag pattern configured on the package
+    # admin page.
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    permissions:
+      id-token: write

@@ -1,4 +1,4 @@
-library flutter_lite_lm;
+library flutter_litert_lm;
 
 export 'src/backend.dart';
 export 'src/config.dart';

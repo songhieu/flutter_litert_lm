@@ -1,6 +1,6 @@
-# flutter_lite_lm_example
+# flutter_litert_lm_example
 
-Demonstrates how to use the flutter_lite_lm plugin.
+Demonstrates how to use the flutter_litert_lm plugin.
 
 ## Getting Started
 

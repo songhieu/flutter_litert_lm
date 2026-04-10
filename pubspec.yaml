@@ -1,12 +1,23 @@
-name: flutter_lite_lm
-description: Flutter plugin for Google's LiteRT-LM — run Large Language Models on-device with GPU/NPU acceleration. Supports Gemma, Llama, Phi, Qwen and more.
+name: flutter_litert_lm
+description: >-
+  Flutter plugin for Google's LiteRT-LM — run Large Language Models on-device
+  with CPU, GPU (OpenCL) or NPU acceleration. Supports Gemma, Qwen, Phi,
+  DeepSeek and more.
 version: 0.1.0
-homepage: https://github.com/songhieutran/flutter_lite_lm
-repository: https://github.com/songhieutran/flutter_lite_lm
-issue_tracker: https://github.com/songhieutran/flutter_lite_lm/issues
+homepage: https://github.com/songhieu/flutter_litert_lm
+repository: https://github.com/songhieu/flutter_litert_lm
+issue_tracker: https://github.com/songhieu/flutter_litert_lm/issues
+documentation: https://github.com/songhieu/flutter_litert_lm#readme
+
+topics:
+  - llm
+  - on-device
+  - litert
+  - gemma
+  - ai
 
 environment:
-  sdk: ^3.11.4
+  sdk: ^3.4.0
   flutter: '>=3.3.0'
 
 dependencies:
@@ -23,7 +34,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.songhieu.flutter_lite_lm
-        pluginClass: FlutterLiteLmPlugin
+        package: com.songhieu.flutter_litert_lm
+        pluginClass: FlutterLitertLmPlugin
       ios:
-        pluginClass: FlutterLiteLmPlugin
+        pluginClass: FlutterLitertLmPlugin

@@ -1,0 +1,40 @@
+# Dependabot watches third-party dependencies and opens PRs when newer
+# versions are published. The two ecosystems we care about:
+#
+#   1. Gradle — picks up new releases of `com.google.ai.edge.litertlm:
+#      litertlm-android` from Google's Maven so we don't miss an upstream
+#      bump. (Note: a GitHub Release tag in google-ai-edge/LiteRT-LM is NOT
+#      the same as a published AAR; only Maven publishes count.)
+#   2. GitHub Actions — keeps subosito/flutter-action and friends current.
+#
+# Dart/pub is intentionally omitted: this plugin only depends on the Flutter
+# SDK and plugin_platform_interface, which move with Flutter itself.
+
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - android
+
+  - package-ecosystem: gradle
+    directory: /example/android
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - android
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci

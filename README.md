@@ -1,72 +1,80 @@
-# Flutter Lite LM
+# flutter_litert_lm
 
-A Flutter plugin for [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) — Google's production-ready, high-performance inference framework for deploying Large Language Models on edge devices.
+[![pub package](https://img.shields.io/pub/v/flutter_litert_lm.svg)](https://pub.dev/packages/flutter_litert_lm)
+[![CI](https://github.com/songhieu/flutter_litert_lm/actions/workflows/ci.yml/badge.svg)](https://github.com/songhieu/flutter_litert_lm/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Run LLMs **on-device** with hardware acceleration (GPU/NPU) directly from your Flutter app.
+Flutter plugin for Google's [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM)
+— run Large Language Models **on-device** from your Flutter app, no network,
+no API keys, no per-token bills.
+
+Supports Gemma, Qwen, Phi, DeepSeek and any other model published in the
+[`litert-community`](https://huggingface.co/litert-community) HuggingFace
+organization, with hardware acceleration via the device's GPU (OpenCL) or
+NPU.
+
+## Why on-device?
+
+- **Private** — prompts never leave the user's phone.
+- **Offline** — works on a plane, in a tunnel, in a covered market.
+- **Zero recurring cost** — no API calls, no token bills, no rate limits.
+- **Low latency** — first-token latency is local round-trip time, not
+  internet round-trip time.
 
 ## Features
 
-- **On-device LLM inference** — no cloud API needed
-- **Hardware acceleration** — GPU (OpenCL) and NPU support on Android
-- **Multi-modal** — text, image, and audio inputs
-- **Streaming** — token-by-token response streaming
-- **Tool/function calling** — agentic workflows with model-driven tool use
-- **Conversation management** — multi-turn chat with history
+- Streaming chat with token-by-token delta delivery
+- Multi-turn conversations with system instructions and history
+- Multimodal inputs (text, images, audio)
+- Tool / function calling for agentic workflows
+- CPU, GPU (OpenCL), and NPU backends
+- Sampler controls: `temperature`, `topK`, `topP`
+- Resource-safe lifecycle: `Engine.dispose()` and `Conversation.dispose()`
+- Ships R8/Proguard keep rules so release builds don't break
+- Manifest-merged `<uses-native-library>` entries so GPU works on Android 12+
+  out of the box
 
-## Supported Models
+## Platform support
 
-| Model | Status |
-|-------|--------|
-| Gemma 4 | Supported |
-| Gemma 3n | Supported |
-| Llama | Supported |
-| Phi-4 | Supported |
-| Qwen | Supported |
-| FunctionGemma | Supported |
+| Platform | Status                                                            |
+|----------|-------------------------------------------------------------------|
+| Android  | ✅ Stable (`com.google.ai.edge.litertlm:litertlm-android:0.10.0`) |
+| iOS      | 🚧 Stub — waiting on Google's LiteRT-LM Swift SDK                |
 
-## Platform Support
-
-| Platform | Status |
-|----------|--------|
-| Android | Stable |
-| iOS | Pending (LiteRT-LM Swift SDK in development) |
+Minimum Android API: **24** (Android 7.0). The shipped AAR contains JNI
+binaries for `arm64-v8a` and `x86_64`.
 
 ## Installation
 
 ```yaml
 dependencies:
-  flutter_lite_lm:
-    git:
-      url: https://github.com/songhieutran/flutter_lite_lm.git
+  flutter_litert_lm: ^0.1.0
 ```
 
-### Android Setup
+Then run:
 
-Add to your `AndroidManifest.xml` inside `<application>` for GPU support:
-
-```xml
-<uses-native-library android:name="libOpenCL.so" android:required="false"/>
-<uses-native-library android:name="libvndksupport.so" android:required="false"/>
+```bash
+flutter pub get
 ```
 
-## Quick Start
+## Quick start
 
 ```dart
-import 'package:flutter_lite_lm/flutter_lite_lm.dart';
+import 'package:flutter_litert_lm/flutter_litert_lm.dart';
 
-// 1. Create and initialize engine
+// 1. Load a model into a new engine.
 final engine = await LiteLmEngine.create(
   LiteLmEngineConfig(
-    modelPath: '/path/to/model.litertlm',
-    backend: LiteLmBackend.gpu,
+    modelPath: '/storage/.../model.litertlm',
+    backend: LiteLmBackend.gpu, // or .cpu / .npu
   ),
 );
 
-// 2. Create a conversation
+// 2. Start a conversation.
 final conversation = await engine.createConversation(
   LiteLmConversationConfig(
-    systemInstruction: 'You are a helpful assistant.',
-    samplerConfig: LiteLmSamplerConfig(
+    systemInstruction: 'You are a helpful assistant. Be concise.',
+    samplerConfig: const LiteLmSamplerConfig(
       temperature: 0.7,
       topK: 40,
       topP: 0.95,
@@ -74,30 +82,51 @@ final conversation = await engine.createConversation(
   ),
 );
 
-// 3. Send a message
-final response = await conversation.sendMessage('What is Flutter?');
-print(response.text);
+// 3a. Get the full reply at once...
+final reply = await conversation.sendMessage('What is Flutter?');
+print(reply.text);
 
-// 4. Stream responses
-conversation.sendMessageStream('Tell me a story').listen((message) {
-  print(message.text); // partial response
+// 3b. ...or stream tokens as they arrive.
+conversation.sendMessageStream('Tell me a story.').listen((delta) {
+  stdout.write(delta.text); // each event is the new tokens, not a snapshot
 });
 
-// 5. Clean up
+// 4. Always release native resources when you're done.
 await conversation.dispose();
 await engine.dispose();
 ```
 
-## Multi-modal Input
+## Streaming chat
+
+`sendMessageStream` returns a `Stream<LiteLmMessage>`. **Each event carries
+only the new tokens** since the previous emission, not a snapshot of the full
+response — accumulate as you go:
 
 ```dart
-final response = await conversation.sendMultimodalMessage([
-  LiteLmContent.text('What do you see in this image?'),
-  LiteLmContent.imageFile('/path/to/photo.jpg'),
-]);
+final buffer = StringBuffer();
+await for (final delta in conversation.sendMessageStream('Hello!')) {
+  buffer.write(delta.text);
+  print(buffer); // partial reply so far
+}
 ```
 
-## Tool Calling
+The example app shows how to wire this into a UI with a typing indicator and
+live token-per-second readout.
+
+## Multimodal
+
+```dart
+final reply = await conversation.sendMultimodalMessage([
+  LiteLmContent.text('Describe what you see.'),
+  LiteLmContent.imageFile('/storage/.../photo.jpg'),
+]);
+print(reply.text);
+```
+
+`LiteLmContent` factories: `text`, `imageFile`, `imageBytes`, `audioFile`,
+`audioBytes`, `toolResponse`.
+
+## Tool calling
 
 ```dart
 final conversation = await engine.createConversation(
@@ -118,65 +147,144 @@ final conversation = await engine.createConversation(
   ),
 );
 
-final response = await conversation.sendMessage('What is the weather in Tokyo?');
-
-// Check if model wants to call a tool
-if (response.toolCalls.isNotEmpty) {
-  final call = response.toolCalls.first;
-  print('Tool: ${call.name}, Args: ${call.arguments}');
-
-  // Send tool result back
-  final finalResponse = await conversation.sendToolResponse(
+final reply = await conversation.sendMessage('Weather in Tokyo?');
+if (reply.toolCalls.isNotEmpty) {
+  final call = reply.toolCalls.first;
+  // Run the tool yourself, then feed the result back:
+  final final_ = await conversation.sendToolResponse(
     call.name,
     '{"temperature": 22, "condition": "sunny"}',
   );
-  print(finalResponse.text);
+  print(final_.text);
 }
 ```
 
-## API Reference
+## Backends
 
-### LiteLmEngine
+| Backend | When to use it                                                      |
+|---------|---------------------------------------------------------------------|
+| `cpu`   | Always works, including emulators. Slowest.                         |
+| `gpu`   | Real devices with OpenCL (Adreno, Mali, Tensor). Much faster.       |
+| `npu`   | Devices with a vendor NPU runtime AND a model variant compiled for that chip (Snapdragon HTP, MediaTek APU). Fastest, but model-specific. |
 
-| Method | Description |
-|--------|-------------|
-| `LiteLmEngine.create(config)` | Load model and create engine |
-| `createConversation([config])` | Start a new conversation |
-| `countTokens(text)` | Count tokens in text |
-| `dispose()` | Release resources |
+The example app lets you switch backends at runtime — useful for benchmarking.
 
-### LiteLmConversation
+> ⚠️ **Emulator note:** Android emulators ship with no `libOpenCL.so`, so the
+> `gpu` backend cannot initialize there. Use `cpu` on the emulator and `gpu`
+> on real hardware.
 
-| Method | Description |
-|--------|-------------|
-| `sendMessage(text)` | Send text, get full response |
-| `sendMultimodalMessage(contents)` | Send mixed content |
-| `sendMessageStream(text)` | Stream response tokens |
-| `sendToolResponse(name, result)` | Return tool execution result |
-| `dispose()` | Release resources |
+## Getting models
 
-### Configuration
+The [`litert-community`](https://huggingface.co/litert-community) HuggingFace
+organization publishes ready-to-run `.litertlm` files. The example app's
+[`models.dart`](example/lib/models.dart) curates the open-license,
+non-gated subset:
 
-- **LiteLmEngineConfig** — `modelPath`, `backend`, `cacheDir`, `visionBackend`, `audioBackend`
-- **LiteLmConversationConfig** — `systemInstruction`, `initialMessages`, `samplerConfig`, `tools`, `automaticToolCalling`
-- **LiteLmSamplerConfig** — `topK`, `topP`, `temperature`
-- **LiteLmBackend** — `cpu`, `gpu`, `npu`
+| Model                          | Size     | License    | Notes                              |
+|--------------------------------|----------|------------|------------------------------------|
+| Qwen 3 0.6B                    | 586 MB   | Apache-2.0 | Smallest general-purpose chat      |
+| Qwen 2.5 1.5B Instruct (q8)    | 1.49 GB  | Apache-2.0 | Balanced quality / size            |
+| DeepSeek R1 Distill Qwen 1.5B  | 1.71 GB  | MIT        | Reasoning / chain-of-thought       |
+| Gemma 4 E2B Instruct           | 2.46 GB  | Apache-2.0 | Google flagship, ungated           |
+| Gemma 4 E4B Instruct           | 3.40 GB  | Apache-2.0 | Highest quality, ~5 GB RAM at load |
 
-## Getting Models
+Models in the `litert-community/Gemma3-*` repos are gated under the Gemma
+license and require a HuggingFace token to download — visit the model's HF
+page first to accept the terms.
 
-Download `.litertlm` model files from HuggingFace:
+You can drop a `.litertlm` file anywhere readable by your app and pass the
+absolute path as `modelPath`. For app-private storage, use
+[`path_provider`](https://pub.dev/packages/path_provider) to resolve a
+writable directory.
+
+## API reference
+
+### `LiteLmEngine`
+
+| Member                            | Description                            |
+|-----------------------------------|----------------------------------------|
+| `LiteLmEngine.create(config)`     | Load a model and initialize the engine |
+| `engine.createConversation([cfg])`| Open a new conversation                |
+| `engine.countTokens(text)`        | Tokenize and count (currently `-1` — upstream API doesn't expose this yet) |
+| `engine.dispose()`                | Release native handles                 |
+
+### `LiteLmConversation`
+
+| Member                                       | Description                              |
+|----------------------------------------------|------------------------------------------|
+| `sendMessage(text, {extraContext})`          | Full reply, awaited                      |
+| `sendMultimodalMessage(contents, {extraContext})` | Mixed text + image + audio          |
+| `sendMessageStream(text, {extraContext})`    | `Stream<LiteLmMessage>` of token deltas  |
+| `sendToolResponse(name, result, {extraContext})` | Reply to a tool call                |
+| `dispose()`                                  | Release the conversation                 |
+
+### Configuration types
+
+- **`LiteLmEngineConfig`** — `modelPath`, `backend`, `cacheDir`,
+  `visionBackend`, `audioBackend`
+- **`LiteLmConversationConfig`** — `systemInstruction`, `initialMessages`,
+  `samplerConfig`, `tools`, `automaticToolCalling`
+- **`LiteLmSamplerConfig`** — `temperature`, `topK`, `topP`
+- **`LiteLmBackend`** — `cpu`, `gpu`, `npu`
+
+## Example app
+
+A full reference implementation lives in [`example/`](example/) and includes:
+
+- Curated model picker with on-device download + progress
+- Backend selector (CPU / GPU / NPU)
+- Streaming chat with typing indicator
+- Per-response inference stats (tokens, tok/s, TTFT, total duration)
 
 ```bash
-# Using LiteRT-LM CLI
-pip install litert-lm
-litert-lm run \
-  --from-huggingface-repo=litert-community/gemma-4-E2B-it-litert-lm \
-  gemma-4-E2B-it.litertlm \
-  --prompt="Hello"
+cd example
+flutter run --release
 ```
 
-Or download directly from HuggingFace litert-community.
+## Troubleshooting
+
+**`NoSuchMethodError: Lcom/google/ai/edge/litertlm/SamplerConfig;.getTopK()I`**
+in release builds — R8 stripped the JNI surface. The plugin already ships
+keep rules in `consumer-rules.pro` that AGP merges into your app
+automatically; if you somehow still hit this, copy those rules into your
+own `proguard-rules.pro`.
+
+**`Cannot find OpenCL library on this device`** on real Android phones with
+GPU backend — your app's manifest is missing `<uses-native-library>`. The
+plugin ships these entries and AGP merges them into your manifest, so this
+should be automatic. If you've disabled manifest merging, add to your app's
+`<application>`:
+
+```xml
+<uses-native-library android:name="libOpenCL.so" android:required="false"/>
+<uses-native-library android:name="libOpenCL-pixel.so" android:required="false"/>
+<uses-native-library android:name="libOpenCL-car.so" android:required="false"/>
+```
+
+**App is killed silently after loading a large model** — out-of-memory.
+Modern phones often have 6–8 GB RAM but a third of that is used by the
+system. Models bigger than ~2.5 GB on disk can blow past what's available
+once loaded. Try a smaller model (Qwen 3 0.6B, Gemma 3 1B) or close
+background apps.
+
+**Streaming feels choppy** — make sure you're using `sendMessageStream`, not
+`sendMessage`. The latter blocks until the entire response is generated.
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for
+the workflow. By contributing you agree that your work will be released
+under this project's Apache 2.0 license.
 
 ## License
 
-MIT
+Licensed under the **Apache License 2.0** — see [LICENSE](LICENSE) for the
+full text. The same license as upstream LiteRT-LM.
+
+## Acknowledgements
+
+- [Google AI Edge](https://github.com/google-ai-edge/LiteRT-LM) for the
+  LiteRT-LM runtime and the `litert-community` model collection.
+- [HuggingFace](https://huggingface.co/litert-community) for hosting the
+  model artifacts.
+- The Flutter team for the plugin platform interface.

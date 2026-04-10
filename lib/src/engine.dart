@@ -1,4 +1,4 @@
-import '../flutter_lite_lm_platform_interface.dart';
+import '../flutter_litert_lm_platform_interface.dart';
 import 'config.dart';
 import 'conversation.dart';
 
@@ -28,7 +28,7 @@ class LiteLmEngine {
   /// This loads the model into memory and prepares it for inference.
   /// May take several seconds depending on model size and backend.
   static Future<LiteLmEngine> create(LiteLmEngineConfig config) async {
-    final id = await FlutterLiteLmPlatform.instance.createEngine(config.toMap());
+    final id = await FlutterLitertLmPlatform.instance.createEngine(config.toMap());
     return LiteLmEngine._(id);
   }
 
@@ -42,7 +42,7 @@ class LiteLmEngine {
     LiteLmConversationConfig? config,
   ]) async {
     _ensureNotDisposed();
-    final id = await FlutterLiteLmPlatform.instance.createConversation(
+    final id = await FlutterLitertLmPlatform.instance.createConversation(
       _id,
       config?.toMap(),
     );
@@ -52,14 +52,14 @@ class LiteLmEngine {
   /// Count the number of tokens in the given text.
   Future<int> countTokens(String text) async {
     _ensureNotDisposed();
-    return FlutterLiteLmPlatform.instance.countTokens(_id, text);
+    return FlutterLitertLmPlatform.instance.countTokens(_id, text);
   }
 
   /// Release native resources for this engine.
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await FlutterLiteLmPlatform.instance.disposeEngine(_id);
+    await FlutterLitertLmPlatform.instance.disposeEngine(_id);
   }
 
   void _ensureNotDisposed() {

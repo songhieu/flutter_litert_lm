@@ -1,16 +1,16 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import 'flutter_lite_lm_method_channel.dart';
+import 'flutter_litert_lm_method_channel.dart';
 
-abstract class FlutterLiteLmPlatform extends PlatformInterface {
-  FlutterLiteLmPlatform() : super(token: _token);
+abstract class FlutterLitertLmPlatform extends PlatformInterface {
+  FlutterLitertLmPlatform() : super(token: _token);
 
   static final Object _token = Object();
-  static FlutterLiteLmPlatform _instance = MethodChannelFlutterLiteLm();
+  static FlutterLitertLmPlatform _instance = MethodChannelFlutterLitertLm();
 
-  static FlutterLiteLmPlatform get instance => _instance;
+  static FlutterLitertLmPlatform get instance => _instance;
 
-  static set instance(FlutterLiteLmPlatform instance) {
+  static set instance(FlutterLitertLmPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }
@@ -36,14 +36,14 @@ abstract class FlutterLiteLmPlatform extends PlatformInterface {
   Future<Map<String, dynamic>> sendMessage(
     String conversationId,
     List<Map<String, dynamic>> contents,
-    String? extraContext,
+    Map<String, Object>? extraContext,
   );
 
   /// Send a message and stream back partial responses as they're generated.
   Stream<Map<String, dynamic>> sendMessageStream(
     String conversationId,
     List<Map<String, dynamic>> contents,
-    String? extraContext,
+    Map<String, Object>? extraContext,
   );
 
   /// Get the number of tokens in the given text.
