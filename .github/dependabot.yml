@@ -1,40 +1,79 @@
-# Dependabot watches third-party dependencies and opens PRs when newer
-# versions are published. The two ecosystems we care about:
+# Dependabot config — intentionally conservative.
 #
-#   1. Gradle — picks up new releases of `com.google.ai.edge.litertlm:
-#      litertlm-android` from Google's Maven so we don't miss an upstream
-#      bump. (Note: a GitHub Release tag in google-ai-edge/LiteRT-LM is NOT
-#      the same as a published AAR; only Maven publishes count.)
-#   2. GitHub Actions — keeps subosito/flutter-action and friends current.
+# The first push of this file opened ~10 PRs at once with major-version
+# bumps (AGP 8 -> 9, Gradle wrapper -> 9, Kotlin -> 2.3, actions/checkout
+# -> v6) that all failed CI because they require Java 21 / Gradle 9 /
+# breaking-changed action APIs the rest of the toolchain isn't ready for.
 #
-# Dart/pub is intentionally omitted: this plugin only depends on the Flutter
-# SDK and plugin_platform_interface, which move with Flutter itself.
+# This config addresses that by:
+#   - Ignoring major-version bumps for build tooling (we'll do those by
+#     hand when we're ready to update Java/Gradle together).
+#   - Grouping minor/patch bumps so dependabot opens ONE PR per ecosystem
+#     per week instead of ten.
+#   - Keeping the litertlm-android dependency on its own track with no
+#     ignore filter — that's the dependency we actually care about
+#     auto-bumping when Google ships an update on Maven.
 
 version: 2
 updates:
+  # Plugin's own android/build.gradle.kts
   - package-ecosystem: gradle
     directory: /android
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - android
+    open-pull-requests-limit: 3
+    labels: [dependencies, android]
+    groups:
+      android-minor-patch:
+        patterns: ["*"]
+        exclude-patterns:
+          - "com.google.ai.edge.litertlm:*"
+        update-types: [minor, patch]
+    ignore:
+      # Major bumps for build tooling break the rest of the toolchain.
+      - dependency-name: "com.android.tools.build:gradle"
+        update-types: [version-update:semver-major]
+      - dependency-name: "org.jetbrains.kotlin:kotlin-gradle-plugin"
+        update-types: [version-update:semver-major]
+      - dependency-name: "org.jetbrains.kotlin.android"
+        update-types: [version-update:semver-major]
 
+  # Example app's android/app/build.gradle.kts
   - package-ecosystem: gradle
     directory: /example/android
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - android
+    open-pull-requests-limit: 3
+    labels: [dependencies, android, example]
+    groups:
+      example-android-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "com.android.tools.build:gradle"
+        update-types: [version-update:semver-major]
+      - dependency-name: "com.android.application"
+        update-types: [version-update:semver-major]
+      - dependency-name: "org.jetbrains.kotlin:kotlin-gradle-plugin"
+        update-types: [version-update:semver-major]
+      - dependency-name: "org.jetbrains.kotlin.android"
+        update-types: [version-update:semver-major]
+      - dependency-name: "gradle"
+        update-types: [version-update:semver-major]
 
+  # GitHub Actions workflows
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - ci
+    open-pull-requests-limit: 3
+    labels: [dependencies, ci]
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # Don't auto-bump major action versions either; the action input
+      # schemas often change between majors.
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
