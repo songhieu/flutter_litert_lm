@@ -78,5 +78,5 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.mockito:mockito-core:5.0.0")
+    testImplementation("org.mockito:mockito-core:5.23.0")
 }
