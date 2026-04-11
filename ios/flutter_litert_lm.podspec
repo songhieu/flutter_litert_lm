@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_litert_lm'
-  s.version          = '0.2.0'
+  s.version          = '0.3.0'
   s.summary          = 'Flutter plugin for LiteRT-LM on-device LLM inference.'
   s.description      = <<-DESC
 Run Large Language Models on-device with GPU acceleration via Google's LiteRT-LM.

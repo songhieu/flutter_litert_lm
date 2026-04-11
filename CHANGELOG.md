@@ -6,6 +6,31 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-11
+
+### Changed
+- **Bumped LiteRT-LM runtime to upstream `176953b` (2026-04-11)**, up from
+  the `12db62a` snapshot v0.2.0 shipped. The new runtime understands the
+  `multi-prefill-seq_q8_ekv4096` packaging format that HuggingFace
+  `litert-community` now uses for every non-Gemma model
+  (Qwen 2.5 / Qwen 3 / Phi-4 mini / DeepSeek R1 distill / etc). Under
+  v0.2.0, engine_create() would either fail outright on those files or
+  load the weights but emit garbage during decoding — the runtime was
+  missing the flatbuffer schema entries for the extended prefill
+  descriptor. v0.3.0 handles them transparently; the public C API
+  surface is unchanged.
+
+### Added
+- Verified loads on HuggingFace `litert-community/Qwen2.5-1.5B-Instruct`,
+  `litert-community/Qwen3-0.6B`, `litert-community/Phi-4-mini-instruct`,
+  and `litert-community/DeepSeek-R1-Distill-Qwen-1.5B` in addition to
+  the existing Gemma 4 E2B / E4B / Gemma 3 1B support.
+
+### Rebuild required
+- Every developer needs to re-run `scripts/build_ios_frameworks.sh` once
+  because v0.3.0 ships a new `LiteRTLM.xcframework` built from the
+  newer upstream source. Old cached artifacts are not compatible.
+
 ## [0.2.0] — 2026-04-11
 
 ### Added
