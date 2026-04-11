@@ -3,7 +3,7 @@ description: >-
   Flutter plugin for Google's LiteRT-LM — run Large Language Models on-device
   with CPU, GPU (OpenCL) or NPU acceleration. Supports Gemma, Qwen, Phi,
   DeepSeek and more.
-version: 0.1.0
+version: 0.2.0
 homepage: https://github.com/songhieu/flutter_litert_lm
 repository: https://github.com/songhieu/flutter_litert_lm
 issue_tracker: https://github.com/songhieu/flutter_litert_lm/issues

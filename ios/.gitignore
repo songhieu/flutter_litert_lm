@@ -36,3 +36,7 @@ Icon?
 /Flutter/Generated.xcconfig
 /Flutter/ephemeral/
 /Flutter/flutter_export_environment.sh
+
+# LiteRT-LM XCFrameworks (built via scripts/build_ios_frameworks.sh)
+Frameworks/LiteRTLM.xcframework
+Frameworks/GemmaModelConstraintProvider.xcframework

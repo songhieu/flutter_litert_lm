@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
@@ -28,7 +29,8 @@ class _ModelPickerScreenState extends State<ModelPickerScreen> {
 
   /// Inference backend used when launching the chat screen. Defaults to CPU
   /// because the Android emulator has no OpenCL — GPU only works on real
-  /// devices, and NPU only on supported chipsets.
+  /// devices, and NPU only on supported chipsets. On iOS the picker is
+  /// locked to CPU (no Metal accelerator is available).
   LiteLmBackend _backend = LiteLmBackend.cpu;
 
   bool _initialized = false;
@@ -254,9 +256,14 @@ class _ModelPickerScreenState extends State<ModelPickerScreen> {
   }
 }
 
-/// Compact segmented control for picking the inference backend. CPU is the
-/// safe default; GPU needs OpenCL (real devices only); NPU needs a vendor
-/// runtime + a model compiled for that chip.
+/// Compact segmented control for picking the inference backend.
+///
+/// On iOS we only expose CPU: the LiteRT-LM Metal GPU accelerator is not
+/// shipped as a prebuilt iOS binary yet (tracked upstream in LiteRT-LM
+/// issue #1050), so selecting GPU/NPU on iOS would just fail at load time
+/// with an "Engine type not found" error. On Android the picker shows all
+/// three backends — CPU works everywhere, GPU needs OpenCL on a real
+/// device, and NPU needs a chip-specific model variant.
 class _BackendSelector extends StatelessWidget {
   const _BackendSelector({
     required this.selected,
@@ -268,6 +275,38 @@ class _BackendSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isIOS = Platform.isIOS;
+
+    if (isIOS) {
+      // iOS: CPU is the only backend that's available right now. Show a
+      // read-only chip so the user understands the choice without seeing
+      // disabled buttons that look broken.
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Inference backend',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+            const SizedBox(height: 6),
+            Chip(
+              avatar: const Icon(Icons.memory, size: 18),
+              label: const Text('CPU (XNNPACK)'),
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'iOS: LiteRT-LM ships no Metal GPU accelerator yet. CPU is '
+              'the only supported backend on iPhone for now.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(

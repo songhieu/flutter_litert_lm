@@ -36,19 +36,52 @@ NPU.
 
 ## Platform support
 
-| Platform | Status                                                            |
-|----------|-------------------------------------------------------------------|
-| Android  | ✅ Stable (`com.google.ai.edge.litertlm:litertlm-android:0.10.0`) |
-| iOS      | 🚧 Stub — waiting on Google's LiteRT-LM Swift SDK                |
+| Platform    | Status  | Backends                                            |
+|-------------|---------|-----------------------------------------------------|
+| Android     | Stable  | CPU (XNNPACK), GPU (OpenCL), NPU (Qualcomm HTP, MediaTek APU) |
+| iOS         | Beta    | CPU (XNNPACK) only                                  |
+| iOS Sim arm64 | Beta  | CPU (XNNPACK) only                                  |
 
-Minimum Android API: **24** (Android 7.0). The shipped AAR contains JNI
-binaries for `arm64-v8a` and `x86_64`.
+Minimum Android API **24** (Android 7.0). Minimum iOS **13.0**. iOS ships
+arm64 slices only (no Intel Mac simulator).
+
+### iOS notes
+
+Google's LiteRT-LM ships no prebuilt iOS runtime, so the plugin pulls the
+C++ runtime at install time and compiles it into an XCFramework on the
+developer's Mac. One-time setup:
+
+```bash
+# 1. install Bazelisk (it will pick up Bazel 7.6.1 automatically)
+brew install bazelisk git-lfs
+
+# 2. clone your app, then from the plugin checkout:
+bash scripts/build_ios_frameworks.sh
+
+# 3. wait 30-60 minutes on the first run (Bazel downloads ~2 GB of deps
+#    and compiles TFLite, protobuf, abseil, etc). Subsequent runs are
+#    cached — flutter build ios after that takes seconds.
+```
+
+Details on what the script does and how to wire it into CI are in
+[`ios/Frameworks/README.md`](ios/Frameworks/README.md).
+
+**iOS backend limitations:** only the CPU (XNNPACK) backend is wired up.
+The LiteRT-LM Metal GPU and WebGPU accelerators exist as separate dylibs
+for macOS but are not shipped for iOS yet — see upstream issue
+[google-ai-edge/LiteRT-LM#1050](https://github.com/google-ai-edge/LiteRT-LM/issues/1050).
+The picker in the example app auto-hides GPU/NPU on iOS.
+
+The iOS build also uses whatever sampler is baked into the model's own
+metadata (kTopK and kGreedy aren't implemented in the C API shipped with
+the current runtime), so the Dart-side `topK` / `topP` / `temperature`
+knobs are ignored on iOS for now.
 
 ## Installation
 
 ```yaml
 dependencies:
-  flutter_litert_lm: ^0.1.0
+  flutter_litert_lm: ^0.2.0
 ```
 
 Then run:
@@ -161,17 +194,23 @@ if (reply.toolCalls.isNotEmpty) {
 
 ## Backends
 
-| Backend | When to use it                                                      |
-|---------|---------------------------------------------------------------------|
-| `cpu`   | Always works, including emulators. Slowest.                         |
-| `gpu`   | Real devices with OpenCL (Adreno, Mali, Tensor). Much faster.       |
-| `npu`   | Devices with a vendor NPU runtime AND a model variant compiled for that chip (Snapdragon HTP, MediaTek APU). Fastest, but model-specific. |
+| Backend | Android                           | iOS       |
+|---------|-----------------------------------|-----------|
+| `cpu`   | Always works (including emulator) | Supported |
+| `gpu`   | Real devices with OpenCL          | Not yet   |
+| `npu`   | Devices with vendor NPU runtime   | Not yet   |
 
-The example app lets you switch backends at runtime — useful for benchmarking.
+The example app lets you switch backends at runtime on Android — useful
+for benchmarking. On iOS the backend selector is locked to CPU.
 
-> ⚠️ **Emulator note:** Android emulators ship with no `libOpenCL.so`, so the
-> `gpu` backend cannot initialize there. Use `cpu` on the emulator and `gpu`
-> on real hardware.
+> **Android emulator note:** emulators ship with no `libOpenCL.so`, so the
+> `gpu` backend cannot initialize there. Use `cpu` on the emulator and
+> `gpu` on real hardware.
+
+> **iOS note:** only CPU is supported. GPU (Metal) requires the
+> `libLiteRtMetalAccelerator.dylib` accelerator plugin, which Google has
+> not shipped for iOS yet. Tracked upstream in LiteRT-LM issue
+> [#1050](https://github.com/google-ai-edge/LiteRT-LM/issues/1050).
 
 ## Getting models
 
@@ -269,6 +308,34 @@ background apps.
 
 **Streaming feels choppy** — make sure you're using `sendMessageStream`, not
 `sendMessage`. The latter blocks until the entire response is generated.
+
+### iOS-specific
+
+**`Build input file cannot be found: .../LiteRTLM.xcframework`** during
+`flutter build ios` — the vendored XCFramework hasn't been built yet.
+Run `bash scripts/build_ios_frameworks.sh` from the plugin checkout
+before your first iOS build. First run is 30-60 minutes, subsequent runs
+are cached by Bazel.
+
+**`engine_create returned NULL ... NOT_FOUND: Engine type not found`** —
+the linker has dropped the LiteRT-LM engine factory static constructors.
+The podspec already passes `-all_load` to the pod target to force every
+`.o` file from `libc_engine.a` to be linked in; if you've customized
+`pod_target_xcconfig` in your own build, make sure `-all_load` is still
+in `OTHER_LDFLAGS`.
+
+**`UNIMPLEMENTED: Sampler type: 1 not implemented yet`** (or 3) — the iOS
+C API in the current LiteRT-LM runtime doesn't implement the kTopK /
+kGreedy samplers. The plugin passes a NULL `session_config` on iOS so
+the engine falls back to the sampler baked into the model metadata,
+which always works.
+
+**iOS simulator can't build for x86_64** — the shipped XCFrameworks only
+contain arm64 slices (Apple Silicon devices + arm64 simulators). The
+plugin's podspec and the example app's `Podfile` both exclude `x86_64`
+from `EXCLUDED_ARCHS[sdk=iphonesimulator*]`; if you copy the podspec into
+your own app without the Podfile hook, add the same exclusion to
+your Runner target manually.
 
 ## Contributing
 

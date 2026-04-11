@@ -31,6 +31,9 @@ dependencies:
 
   # Resolve a writable directory for downloaded model files.
   path_provider: ^2.1.3
+  # Pin path_provider_foundation to 2.5.x to avoid 2.6.0's objective_c FFI
+  # native-assets dependency, which isn't supported by our Flutter version.
+  path_provider_foundation: 2.5.1
 
 dev_dependencies:
   integration_test:
