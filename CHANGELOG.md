@@ -6,6 +6,16 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Tool / function calling on Android was silently broken.** `parseConversationConfig`
+  read the `tools` list from Dart but never applied it to `ConversationConfig`, so
+  every conversation was created with no tools registered and the model never emitted
+  tool-call responses. The fix builds an `OpenApiTool` for each schema map received
+  from Dart (serialised with the Android-bundled `org.json` library — no extra
+  dependency required), passes them through the `tool()` builder to obtain
+  `ToolProvider` instances, and sets both `tools` and `automaticToolCalling` on the
+  config via `copy()`. No public API changes.
+
 ## [0.3.0] — 2026-04-11
 
 ### Changed
