@@ -131,6 +131,16 @@ class FlutterLitertLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
                     ?: throw IllegalStateException("Engine not found: $engineId")
                 val configMap = call.argument<Map<String, Any>>("config")
 
+                // LiteRT only supports one active session per engine. Close any
+                // existing conversation for this engine before creating a new one,
+                // otherwise the SDK throws FAILED_PRECONDITION: A session already exists.
+                conversationEngineMap.entries
+                    .filter { it.value == engineId }
+                    .forEach { (convId, _) ->
+                        conversations.remove(convId)?.close()
+                        conversationEngineMap.remove(convId)
+                    }
+
                 val conversation = if (configMap != null) {
                     val convConfig = parseConversationConfig(configMap)
                     engine.createConversation(convConfig)
