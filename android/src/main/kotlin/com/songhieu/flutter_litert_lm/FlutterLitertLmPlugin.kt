@@ -9,7 +9,9 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.OpenApiTool
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.tool
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -18,6 +20,8 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -126,6 +130,16 @@ class FlutterLitertLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
                 val engine = engines[engineId]
                     ?: throw IllegalStateException("Engine not found: $engineId")
                 val configMap = call.argument<Map<String, Any>>("config")
+
+                // LiteRT only supports one active session per engine. Close any
+                // existing conversation for this engine before creating a new one,
+                // otherwise the SDK throws FAILED_PRECONDITION: A session already exists.
+                conversationEngineMap.entries
+                    .filter { it.value == engineId }
+                    .forEach { (convId, _) ->
+                        conversations.remove(convId)?.close()
+                        conversationEngineMap.remove(convId)
+                    }
 
                 val conversation = if (configMap != null) {
                     val convConfig = parseConversationConfig(configMap)
@@ -251,11 +265,13 @@ class FlutterLitertLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
         else -> Backend.CPU()
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun parseConversationConfig(map: Map<String, Any>): ConversationConfig {
         val systemInstruction = map["systemInstruction"] as? String
         val samplerMap = map["samplerConfig"] as? Map<String, Any>
         val toolsList = map["tools"] as? List<Map<String, Any>>
         val initialMsgsList = map["initialMessages"] as? List<Map<String, Any>>
+        val automaticToolCalling = map["automaticToolCalling"] as? Boolean ?: true
 
         val samplerConfig = samplerMap?.let {
             SamplerConfig(
@@ -275,6 +291,19 @@ class FlutterLitertLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
             }
         }
 
+        // Build a ToolProvider for each tool definition received from Dart.
+        // Uses OpenApiTool so the model sees the JSON schema. execute() is a
+        // placeholder — automaticToolCalling=false means the SDK returns tool
+        // calls to Dart instead of auto-executing them.
+        val toolProviders = toolsList?.mapNotNull { toolMap ->
+            val name = toolMap["name"] as? String ?: return@mapNotNull null
+            val schemaJson = mapToJsonObject(toolMap).toString()
+            tool(object : OpenApiTool {
+                override fun getToolDescriptionJsonString(): String = schemaJson
+                override fun execute(args: String): String = "{}"
+            })
+        }
+
         // ConversationConfig fields are non-null with defaults; build from default
         // and override only what we have via copy().
         var config = ConversationConfig()
@@ -283,6 +312,12 @@ class FlutterLitertLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
             config = config.copy(initialMessages = initialMessages)
         }
         samplerConfig?.let { config = config.copy(samplerConfig = it) }
+        if (!toolProviders.isNullOrEmpty()) {
+            config = config.copy(
+                tools = toolProviders,
+                automaticToolCalling = automaticToolCalling,
+            )
+        }
         return config
     }
 
@@ -324,5 +359,34 @@ class FlutterLitertLmPlugin : FlutterPlugin, MethodCallHandler, EventChannel.Str
             "text" to text,
             "toolCalls" to toolCalls,
         )
+    }
+
+    // Recursively converts a Map<String, Any> to a JSONObject so that nested
+    // tool-schema maps are serialized correctly without requiring an external
+    // JSON library such as Gson.
+    @Suppress("UNCHECKED_CAST")
+    private fun mapToJsonObject(map: Map<String, Any>): JSONObject {
+        val json = JSONObject()
+        for ((k, v) in map) {
+            when (v) {
+                is Map<*, *> -> json.put(k, mapToJsonObject(v as Map<String, Any>))
+                is List<*> -> json.put(k, listToJsonArray(v))
+                else -> json.put(k, v)
+            }
+        }
+        return json
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun listToJsonArray(list: List<*>): JSONArray {
+        val arr = JSONArray()
+        for (item in list) {
+            when (item) {
+                is Map<*, *> -> arr.put(mapToJsonObject(item as Map<String, Any>))
+                is List<*> -> arr.put(listToJsonArray(item))
+                else -> arr.put(item)
+            }
+        }
+        return arr
     }
 }
